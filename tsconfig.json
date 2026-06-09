@@ -4,7 +4,8 @@
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
-    "module": "commonjs",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "target": "es2020",
     "types": [],
     "esModuleInterop": true,
