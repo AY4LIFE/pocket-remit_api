@@ -1,8 +1,12 @@
 import express from "express";
 import type { Request, Response } from "express";
 import dotenv from "dotenv";
+import devLogger from './utils/logger.js'
 
+const logger = devLogger()
 
+//logger.debug("Debugging something")
+//logger.error("Something broke")
 dotenv.config(); // loads your .env file
 
 const app = express();
@@ -23,8 +27,10 @@ app.get("/health", (req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 3000;
 
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    logger.info("Server started!")
+    console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
