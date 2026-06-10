@@ -40,24 +40,26 @@ app.get("/health", (req: Request, res: Response<HealthResponseBody>) => {
 });
 
 
-app.all('*', (req, res, next) => {
-    const err = new Error(`Can't find ${req.originalUrl} on the server`) as AppError
-    err.status = 404
-    next(err)
-})
+app.all("/{*path}", (req, res, next) => {
+  const err = new Error(`Can't find ${req.originalUrl} on the server`) as AppError;
+  err.status = 404;
+  next(err); // passes the error down to the global error handler below
+});
 
-const errorHandler: ErrorRequestHandler = ((error: AppError, req: Request, res: Response, next: NextFunction) => {
-    error.status = error.status || 500;
-    error.message = error.message || 'error'
-    logger.error(`[${error.status}] ${error.message}`)
+const errorHandler: ErrorRequestHandler = (error: AppError, req, res, next) => {
+  const status = error.status || 500;
+  const message = error.message || "Internal server error";
 
-    res.status(error.status).json({
-        status: error.status,
-        message: error.message
-    })
+  logger.error(`[${status}] ${message}`); // log every error
 
-app.use(errorHandler)
-})
+  res.status(status).json({
+    status,
+    message,
+  });
+};
+
+app.use(errorHandler);
+
 
 const PORT: string | number = process.env.PORT || 3000;
 
