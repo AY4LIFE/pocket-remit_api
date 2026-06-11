@@ -2,6 +2,9 @@ import express from "express";
 import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import devLogger from './utils/logger.js'
+import {createUsersTable} from "./models/User.js"
+import authRoutes from "./routes/auth.routes.js"
+import "reflect-metadata";
 
 interface HealthResponseBody {
   status: string;
@@ -27,6 +30,8 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/auth", authRoutes)
 
 app.get("/", (req: Request, res: Response<string>) => {
   res.send("Life Is Good");
@@ -63,10 +68,16 @@ app.use(errorHandler);
 
 const PORT: string | number = process.env.PORT || 3000;
 
+const start = async() => {
+  await createUsersTable()
+  logger.info("Users table ready!")
 
-app.listen(PORT, () => {
+
+  app.listen(PORT, () => {
     logger.info("Server started!")
-    console.log(`Server running on port ${PORT}`);
-});
+    console.log(`Server running on port ${PORT} with link localhost:${PORT}`)
+  })
+}
 
+start()
 export default app;
