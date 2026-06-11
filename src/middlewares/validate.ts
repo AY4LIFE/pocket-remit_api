@@ -8,7 +8,7 @@ import type {Request, Response, NextFunction} from 'express'
 // That middleware will validate req.body against the DTO rules.
 // --------------------
 
-export const alidateBody = (DtoClass: any) => {
+export const validateBody = (DtoClass: any) => {
 
     return async (req: Request, res: Response, next: NextFunction) => {
 
