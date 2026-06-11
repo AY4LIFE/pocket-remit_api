@@ -4,7 +4,7 @@ import {IsEmail, IsNotEmpty, IsString, MinLength} from "class-validator"
 // ----------------------------------------------
 // This DTO is used when someone is Registering
 // Each decorator above a propert is a RULE
-// If the ule is broken, class-validator will collect the error
+// If the rule is broken, class-validator will collect the error
 //------------------------------------------------
 
 export class RegisterDto {
