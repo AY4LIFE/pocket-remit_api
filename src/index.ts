@@ -5,6 +5,7 @@ import devLogger from './utils/logger.js'
 import authRoutes from "./routes/auth.routes.js"
 import "reflect-metadata";
 import { AppDataSource } from "./config/database.js";
+import walletRoutes from "./routes/wallet.routes.js"
 
 interface HealthResponseBody {
   status: string;
@@ -32,6 +33,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/auth", authRoutes)
+app.use("/wallets", walletRoutes)
 
 app.get("/", (req: Request, res: Response<string>) => {
   res.send("Life Is Good");
