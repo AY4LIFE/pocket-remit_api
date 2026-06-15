@@ -2,9 +2,9 @@ import express from "express";
 import type { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 import dotenv from "dotenv";
 import devLogger from './utils/logger.js'
-import {createUsersTable} from "./models/User.js"
 import authRoutes from "./routes/auth.routes.js"
 import "reflect-metadata";
+import { AppDataSource } from "./config/database.js";
 
 interface HealthResponseBody {
   status: string;
@@ -68,16 +68,17 @@ app.use(errorHandler);
 
 const PORT: string | number = process.env.PORT || 3000;
 
-const start = async() => {
-  await createUsersTable()
-  logger.info("Users table ready!")
-
+const start = async () => {
+  await AppDataSource.initialize();
+  logger.info("Database connected!");
 
   app.listen(PORT, () => {
-    logger.info("Server started!")
-    console.log(`Server running on port ${PORT} with link localhost:${PORT}`)
-  })
-}
+    logger.info("Server started!");
+    console.log(`Server running on port ${PORT}`);
+  });
+};
+
+start();
 
 start()
 export default app;
