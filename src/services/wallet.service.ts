@@ -12,7 +12,7 @@ import { Wallet } from "../models/Wallet.js";
 // If someone tries to create a wallet with an unsupported
 // currency, we reject it immediately.
 // --------------------
-const SUPPORTED_CURRENCIES = ["NGN", "USD", "GHS"];
+const SUPPORTED_CURRENCIES = ["NGN", "USD", "GHS", "EUR"];
 
 // --------------------
 // Gets all wallets for a user.
