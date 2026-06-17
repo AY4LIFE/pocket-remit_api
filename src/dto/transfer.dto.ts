@@ -4,8 +4,9 @@ import {
     IsNotEmpty,
     IsOptional,
     IsPositive,
-    IsIn
+    IsIn,
 } from 'class-validator'
+import { Transform } from 'class-transformer'
 // ------------------------------------
 // INITIATETRANSFERDTO
 // This is the shape of the request body when a user
@@ -33,5 +34,6 @@ export class InitiateTransferDto{
 
     @IsOptional()
     @IsString()
+    @Transform(({ value }: { value: any }) => value ?? undefined)
     narration?: string
 }
