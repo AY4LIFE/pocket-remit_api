@@ -7,6 +7,9 @@ import{
 import {autenticate} from "../middlewares/autenticate.js"
 import {validateBody} from "../middlewares/validate.js"
 import {createWalletDto} from "../dto/wallet.dto.js"
+import type {AuthRequest} from "../middlewares/autenticate.js"
+import { AppDataSource } from "../config/database.js"
+import { Wallet } from "../models/Wallet.js"
 
 const router = Router()
 
@@ -27,5 +30,20 @@ router.post("/", validateBody(createWalletDto), createWallet)
 
 // GET /wallets/:id/balance - get balance of a specific wallet
 router.get("/:id/balance", getBalance)
+
+// ⚠️ DEV ONLY — remove before production!
+router.post("/:id/deposit", async (req: AuthRequest, res, next) => {
+  try {
+    const walletRepo = AppDataSource.getRepository(Wallet);
+    await walletRepo.increment(
+      { id: req.params.id as string },
+      'balance',
+      Number(req.body.amount)
+    );
+    res.json({ success: true, message: `Wallet funded successfully` });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router
