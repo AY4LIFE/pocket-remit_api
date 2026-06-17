@@ -59,7 +59,9 @@ export const initiateTransfer = async(
     return res.status(201).json({
         success: true,
         message: 'Transfer initiated successfully',
-        data: transaction
+        data: {
+            ...transaction,
+            amount: Number(transaction.amount)}
     })
     } catch(error: any){
         next(error)
@@ -120,7 +122,9 @@ export const getTransactionById = async (
         return res.status(200).json({
             success: true,
             message: 'Transaction fetched successfully',
-            data: transaction
+            data: {
+            ...transaction,
+            amount: Number(transaction.amount)}
         })
     }catch(error){
         next(error)
