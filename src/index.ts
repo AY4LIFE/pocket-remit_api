@@ -4,8 +4,9 @@ import dotenv from "dotenv";
 import devLogger from './utils/logger.js'
 import authRoutes from "./routes/auth.routes.js"
 import "reflect-metadata";
-import { AppDataSource } from "./config/database.js";
+import { AppDataSource } from "./config/database.js"
 import walletRoutes from "./routes/wallet.routes.js"
+import transferRoutes from './routes/transfer.routes.js'
 
 interface HealthResponseBody {
   status: string;
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/auth", authRoutes)
 app.use("/wallets", walletRoutes)
+app.use("/transfers", transferRoutes)
 
 app.get("/", (req: Request, res: Response<string>) => {
   res.send("Life Is Good");
