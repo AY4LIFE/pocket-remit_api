@@ -33,7 +33,16 @@ export class TransferRepository{
         order: {createdAt: 'DESC'},
         take: limit,
         skip: offset,
-        relations: ['sender']
+        relations: ['sender'],
+        select: {
+  sender: {
+    id: true,
+    email: true,
+    full_name: true,
+    role: true,
+    created_at: true
+  }
+}
     })
   }
 
@@ -41,7 +50,15 @@ export class TransferRepository{
   async findById(id: string): Promise<Transaction | null>{
     return await this.repo.findOne({
         where: {id},
-        relations: ['sender'] // JOIN the User so sender details are available
+        relations: ['sender'], // JOIN the User so sender details are available
+        select: {
+  sender: {
+    id: true,
+    email: true,
+    full_name: true,
+    role: true,
+    created_at: true
+  }}
     })
   }
 
