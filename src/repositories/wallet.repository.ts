@@ -8,7 +8,7 @@ import {Wallet} from "../models/Wallet.js"
 // The service will call these functions, never the DB directly.
 // --------------------
 
-const walletRepository = AppDataSource.getRepository(Wallet)
+export const walletRepository = AppDataSource.getRepository(Wallet)
 
 // Find all wallets that belong to a specific user used in GET /wallets
 export const findWalletsByUserID = async (userId: string): Promise<Wallet[]> => {
