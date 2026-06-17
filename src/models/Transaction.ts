@@ -48,7 +48,7 @@ export class Transaction{
   //   - accountNumber and bankCode → sent by the user in the request
   // ------------------------------------
   @Column()
-  receipientName!: string
+  recipientName!: string
 
   @Column()
   recipientAccountNumber!: string
