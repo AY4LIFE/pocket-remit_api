@@ -1,5 +1,4 @@
 import { DataSource } from "typeorm";
-import { createClient } from "redis";
 import "reflect-metadata";
 import "dotenv/config";
 import "reflect-metadata";
