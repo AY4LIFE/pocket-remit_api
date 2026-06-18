@@ -19,7 +19,7 @@ export class FxService {
     // prefixing keys with "fx:" keeps them organized
     // and avoids clashing with other Redis keys
     // ------------------------------------
-    const cacheKey = `fx: ${from}:${to}`
+    const cacheKey = `fx:${from}:${to}`
     const cached = await redis.get(cacheKey)
 
     if (cached) {
