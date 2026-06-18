@@ -31,17 +31,4 @@ router.post("/", validateBody(createWalletDto), createWallet)
 // GET /wallets/:id/balance - get balance of a specific wallet
 router.get("/:id/balance", getBalance)
 
-router.post("/:id/deposit", async (req: AuthRequest, res, next) => {
-  try {
-    const walletRepo = AppDataSource.getRepository(Wallet);
-    await walletRepo.increment(
-      { id: req.params.id as any },
-      'balance',
-      Number(req.body.amount)
-    );
-    res.json({ success: true, message: `Wallet funded successfully` });
-  } catch (error) {
-    next(error);
-  }
-});
 export default router
