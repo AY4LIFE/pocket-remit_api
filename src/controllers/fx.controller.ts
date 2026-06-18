@@ -93,7 +93,7 @@ export const convert = async(
                 data: {from, to, amount, rate: 1, result: amount}
             })
         }
-        const result = fxService.convert(from, to, amount)
+        const result = await fxService.convert(from, to, amount)
 
         return res.status(200).json({
             success: true,
