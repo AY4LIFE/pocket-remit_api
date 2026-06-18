@@ -7,6 +7,7 @@ import "reflect-metadata";
 import { AppDataSource } from "./config/database.js"
 import walletRoutes from "./routes/wallet.routes.js"
 import transferRoutes from './routes/transfer.routes.js'
+import {connectRedis} from './config/redis.js'
 
 interface HealthResponseBody {
   status: string;
@@ -75,6 +76,9 @@ const PORT: string | number = process.env.PORT || 3000;
 const start = async () => {
   await AppDataSource.initialize();
   logger.info("Database connected!");
+
+  await connectRedis()
+  logger.info("Redis connected!")
 
   app.listen(PORT, () => {
     logger.info("Server started!");
