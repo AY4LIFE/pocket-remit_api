@@ -7,7 +7,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "es2020",
-    "types": [],
+    "types": ["node", "jest"],
     "esModuleInterop": true,
     "skipDefaultLibCheck": true,
     // For nodejs:
@@ -44,6 +44,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
 }
