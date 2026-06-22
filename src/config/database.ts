@@ -1,8 +1,9 @@
 import { DataSource } from "typeorm";
 import "reflect-metadata";
 import "dotenv/config";
-import "reflect-metadata";
-
+import { User } from "../models/User.js";
+import { Wallet } from "../models/Wallet.js";
+import { Transaction } from "../models/Transaction.js";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -12,6 +13,13 @@ export const AppDataSource = new DataSource({
   password: process.env.POSTGRES_PASSWORD!,
   database: process.env.POSTGRES_DB!,
   synchronize: true,
-  entities: ["dist/models/*.js"],
+  // ------------------------------------
+  // ENTITIES IMPORTED DIRECTLY
+  // Instead of a glob pattern like "dist/models/*.js"
+  // which breaks in test environments, we import each
+  // entity explicitly. TypeORM always finds them this way
+  // regardless of environment.
+  // ------------------------------------
+  entities: [User, Wallet, Transaction],
   logging: false,
 });
