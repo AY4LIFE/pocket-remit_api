@@ -32,5 +32,8 @@ export default {
   },
 
   // Only look for test files inside the tests/ folder
-  testMatch: ['**/tests/**/*.test.ts']
+  testMatch: ['**/tests/**/*.test.ts'],
+
+  silent: true,
+  verbose: true // 👈 suppresses console.log during tests
 }
