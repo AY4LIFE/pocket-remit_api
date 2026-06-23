@@ -34,9 +34,6 @@ dotenv.config(); // loads your .env file
 
 const app = express();
 
-// Helmet must be the first middleware registered
-// It sets 13 security HTTP headers automatically
-app.use(helmet())
 
 // Global Rate Limiter
 // Applies to all routes - a basic safety net
@@ -72,7 +69,7 @@ const authLimiter = rateLimit({
     message: 'Too many login attempts, please try again in 15 minutes time'
   },
   standardHeaders: true,
-  legacyHeaders: true,
+  legacyHeaders: false,
   // SKIP SUCCESSFUL REQUESTS
   // Only COUNT failed attempts toward the limit.
   // A real user logging in successfully doesn't
@@ -80,6 +77,10 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true
 })
 
+// Helmet must be the first middleware registered
+// It sets 13 security HTTP headers automatically
+app.use(helmet())
+app.disable('x-powered-by')
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
