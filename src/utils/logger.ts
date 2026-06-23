@@ -1,8 +1,12 @@
 import {createLogger, format, transports} from 'winston'
 const {combine, timestamp, label, printf} = format
 
-const myFormat = printf(({level, message, label, timestamp}) => {
-    return `${timestamp} [${label}] [${level}] ${message}`;
+const myFormat = printf(({level, message, label, timestamp, ...metadata}) => {
+    
+    const metastring = Object.keys(metadata).length
+    ? `${JSON.stringify(metadata)}`
+    : ''
+    return `${timestamp} [${label}] [${level}] ${message} ${metastring}`;
 })
 
 const devLogger = () => {
