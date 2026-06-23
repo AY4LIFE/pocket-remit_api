@@ -4,7 +4,9 @@ import {Wallet} from '../models/Wallet.js'
 import {InitiateTransferDto} from '../dto/transfer.dto.js'
 import {Transaction} from '../models/Transaction.js'
 import {getProvider} from '../providers/provider.router.js'
+import devLogger from '../utils/logger.js'
 
+const logger = devLogger()
 export class TransferService{
     private transferRepo = new TransferRepository()
     private walletRepo = AppDataSource.getRepository(Wallet)
@@ -27,9 +29,19 @@ export class TransferService{
         const wallet = await this.getWallet(userId, dto)
 
         if (!wallet){
+            logger.warn('Transfer attempted with no wallet', {
+                userId,
+                currency: dto.currency
+            })
             throw new Error(`You don't have a ${dto.currency} wallet`)
         }
         if (Number(wallet.balance) < dto.amount){
+            logger.warn('Transfer attempted with insufficient balance,',{
+                userId,
+                walletId: wallet.id,
+                attempted: dto.amount,
+                currency: dto.currency
+            })
             throw new Error('Insufficient balance')
         }
 
@@ -71,6 +83,16 @@ export class TransferService{
             }
         )
 
+        logger.info('Transfer initiated', {
+            userId,
+            transactionId: transaction.id,
+            amount: dto.amount,
+            currency: dto.currency,
+            recipientAccount: dto.recipientAccount,
+            bankCode: dto.bankCode,
+            provider: provider.name
+        })
+
         //Step 4: Call the bank
         try{
             const result = await provider.initiateTransfer({
@@ -88,11 +110,25 @@ export class TransferService{
                 result.status,
                 result.providerReference
             )
+            logger.info('Transfer status updated', {
+                userId,
+                transactionId: transaction.id,
+                status: result.status,
+                providerReference: result.providerReference,
+                provider: provider.name
+            })
             return {...transaction, status: result.status}
 
         }catch(error){
             // Bank call failed entirely - mark as failed
             // The record still exists so there is always a paper trail
+            logger.error('Transfer failed - provider did not respond', {
+                userId,
+                transactionId: transaction.id,
+                provider: provider.name,
+                amount: dto.amount,
+                currency: dto.currency
+            })
             await this.transferRepo.updateStatus(
                 transaction.id,
                 'failed',
