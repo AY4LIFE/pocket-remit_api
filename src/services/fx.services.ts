@@ -1,4 +1,7 @@
 import redis from '../config/redis.js'
+import devLogger from '../utils/logger.js'
+
+const logger = devLogger()
 
 // ------------------------------------
 // FXSERVICE
@@ -23,7 +26,10 @@ export class FxService {
     const cached = await redis.get(cacheKey)
 
     if (cached) {
-        console.log(`Cache hit for ${cacheKey}`)
+        logger.info('FX rate cache hit', {
+          cacheKey,
+          rate: parseFloat(cached)
+        })
         return parseFloat(cached)
     } // Cache Hit - Return immediately, no API calls needed
 
@@ -31,11 +37,20 @@ export class FxService {
     // STEP 2 — CACHE MISS → FETCH FROM API
     // Only reaches here if Redis didn't have the rate.
     // Call the free exchangerate API with the base currency
-    console.log(`Cache miss for ${cacheKey} - fetching from API`)
+    logger.info('FX rate cache miss - fetching from API', {
+      cacheKey,
+      from, 
+      to
+    })
     const response = await fetch(
         `https://api.exchangerate-api.com/v4/latest/${from}`
     )
     if(!response.ok){
+        logger.error('FX rate API request failed', {
+          from,
+          to,
+          status: response.status
+        })
         throw new Error(`Failed to fetch exchange rate for ${from}`)
     }
     const data = await response.json() as {rates: Record<string, number>}
@@ -43,10 +58,22 @@ export class FxService {
     // Extract the specific rate we need
     const rate = data.rates[to]
     if (!rate){
+      logger.error('FX rate not found in API response', {
+        from,
+        to,
+        availableCurrencies: Object.keys(data.rates).join(', ')
+      })
         throw new Error (`Exchange rate not found for ${from} -> ${to}`)
     }
 
     // STEP 3: Store in Redis with a TIL (EX)
+    logger.info('FX rate fetched and cached', {
+      cacheKey,
+      from,
+      to,
+      rate,
+      ttlSeconds: 300
+    })
     await redis.set(cacheKey, rate.toString(), {EX: 300})
     return rate
 
@@ -80,6 +107,14 @@ export class FxService {
     // ------------------------------------
 
     const result = parseFloat((amount * rate).toFixed(4))
+
+    logger.info('FX Conversion performed', {
+      from,
+      to,
+      amount,
+      rate,
+      result
+    })
 
     return {
         from, to, amount, rate, result
