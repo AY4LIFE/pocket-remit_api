@@ -242,7 +242,7 @@ Hardening the API for production.
 | Debit first, call bank second | Week 5 — transaction ordering |
 | Idempotency keys | Week 5 — `clientReference` field |
 | Cache FX rates, not transfers | Week 6 — Redis TTL |
-| Audit trail in logs | Week 8 — structured Winston logs |
+| Audit trail in logs | Week 8 — Structured Winston logs |
  
 ---
  
