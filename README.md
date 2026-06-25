@@ -246,14 +246,6 @@ Hardening the API for production.
  
 ---
  
-## Recommended Reading
- 
-- [The Twelve-Factor App](https://12factor.net/) — config, logs, and backing services methodology
-- [TypeORM Docs — Relations and Migrations](https://typeorm.io/)
-- [OWASP Top 10](https://owasp.org/www-project-top-ten/) — web application security risks
-- [Designing Data-Intensive Applications](https://dataintensive.net/) Ch. 7 — transactions and isolation levels
----
- 
 ## Author
  
 Built as part of an internship capstone project following the PocketRemit API curriculum.
