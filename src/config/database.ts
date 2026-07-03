@@ -12,7 +12,7 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USER!,
   password: process.env.POSTGRES_PASSWORD!,
   database: process.env.POSTGRES_DB!,
-  synchronize: true,
+  synchronize: false,
   // ------------------------------------
   // ENTITIES IMPORTED DIRECTLY
   // Instead of a glob pattern like "dist/models/*.js"
