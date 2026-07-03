@@ -23,7 +23,7 @@ export const validateBody = (DtoClass: any) => {
         if (errors.length > 0){
             // Collect all error messages into a clean array
             const messages = errors.map((err) => {
-                Object.values(err.constraints || {})
+                Object.values(err.constraints)
             }).flat()
 
             res.status(400).json({
