@@ -47,4 +47,5 @@ export abstract class BaseProvider{
     // Every provider must be able to initiate a transfer
     // We don't care about the how - each bank does it differently
     abstract initiateTransfer(req: TransferRequest): Promise<TransferResult>
+    abstract getTransferStatus(providerReference: string): Promise<TransferResult>
 }
