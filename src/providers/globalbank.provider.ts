@@ -28,6 +28,21 @@ export class GlobalBankProvider extends BaseProvider{
     return {accountName: `Global Account Holder ${accountNumber.slice(-4)}`}
   }
 
+  async getTransferStatus(providerReference: string): Promise<TransferResult>{
+    await sleep(500) // Simulate network latency
+
+    // GlobalBank transfers take time to settle.
+    // In a real system you'd call their status API.
+    // Here we simulate that after enough time
+    // international transfers eventually succeed.
+    return {
+      success: true,
+      providerReference: providerReference,
+      status: 'success',
+      message: 'International Transfer completed successfully'
+    }
+  }
+
   // ------------------------------------
   // INITIATETRANSFER
   // This is the key difference from LocalBank.
