@@ -24,65 +24,87 @@ export class TransferService{
         userId: string,
         dto: InitiateTransferDto
     ): Promise<Transaction>{
-
-        // Step 1: Check Balance
-        const wallet = await this.getWallet(userId, dto)
-
-        if (!wallet){
-            logger.warn('Transfer attempted with no wallet', {
-                userId,
-                currency: dto.currency
-            })
-            throw new Error(`You don't have a ${dto.currency} wallet`)
-        }
-        if (Number(wallet.balance) < dto.amount){
-            logger.warn('Transfer attempted with insufficient balance,',{
-                userId,
-                walletId: wallet.id,
-                attempted: dto.amount,
-                currency: dto.currency
-            })
-            throw new Error('Insufficient balance')
-        }
-
-        // Step 2: Look up the recipient
+        // Step 1: Look up the recipient
         // Verify the account exists and get the holder's name
         const provider = getProvider(dto.currency)
         const {accountName} = await provider.lookupAccount(
             dto.recipientAccount
         )
 
-        // Step 3: Debit Wallet and Create Transaction Record
-        // Both happen atomically in one DB Transaction
-        const transaction = await AppDataSource.transaction(
-            async (entityManager) => {
-                // Deduct the wallet balance
-                await entityManager.decrement(
-                    Wallet,
-                    {id: wallet.id},
-                    'balance',
-                    dto.amount
-                )
+        // Step 2: DB Transaction
+        // Balance check and Debit now happen together
+        // inside the bubble with a row-level lock
 
-                // Create the transaction record as pending
-                const newTransaction = entityManager.create(Transaction, {
-                    sender: {id: userId},
-                    senderWalletId: wallet.id,
-                    amount: dto.amount,
-                    currency: dto.currency,
-                    recipientName: accountName,
-                    recipientAccountNumber: dto.recipientAccount,
-                    bankCode: dto.bankCode,
-                    narration: dto.narration,
-                    status: 'pending'
-                } as any)
+        // querryRunner gives us finer control than
+        // the AppDataSource.transaction() method
+        // we need it for pessimistic locking
+        const queryRunner = AppDataSource.createQueryRunner()
+        await queryRunner.connect()
+        await queryRunner.startTransaction()
 
-                return await entityManager.save(newTransaction)
-                // DB transaction commits here
-                // Wallet is debited. Record exists. safe to call bank
+        let transaction: Transaction
+
+        try{
+            // Lock the Wallet Row
+            const wallet = await queryRunner.manager.findOne(Wallet, {
+                where: {
+                    user: {id: userId},
+                    currency: dto.currency
+                },
+                lock: {mode: 'pessimistic_write'}
+            })
+
+            if (!wallet){
+                logger.warn('Transfer attempted with no wallet',{
+                    userId,
+                    currency: dto.currency
+                })
+                throw new Error(`You don't have a ${dto.currency} wallet`)
             }
-        )
 
+            if (Number(wallet.balance) < dto.amount){
+                logger.warn('Transfer attempted with insufficient balance',{
+                    userId,
+                    walletId: wallet.id,
+                    attempted: dto.amount,
+                    currency: dto.currency,
+                })
+                throw new Error(`Insufficient balance`)
+            }
+
+            // Deduct the wallet balance
+            await queryRunner.manager.decrement(
+                Wallet,
+                {id: wallet.id},
+                'balance',
+                dto.amount
+            )
+
+            // Create the transaction record as pending
+            const newTransaction = queryRunner.manager.create(Transaction,{
+                sender: {id: userId},
+                senderWalletId: wallet.id,
+                amount: dto.amount,
+                currency: dto.currency,
+                recipientAccountNumber: dto.recipientAccount,
+                bankCode: dto.bankCode,
+                narration: dto.narration,
+                status: 'pending'
+            } as any)
+
+            transaction = await queryRunner.manager.save(newTransaction)
+            // Commit - wallet debited and record created atomically
+            await queryRunner.commitTransaction()
+        } catch(error){
+            // Rollback
+            // If anything inside fails, undo everything automatically
+            await queryRunner.rollbackTransaction()
+            throw error
+        }
+        finally{
+            // Always release the queryRunner, otherwise it leaks DB connections
+            await queryRunner.release()
+        }
         logger.info('Transfer initiated', {
             userId,
             transactionId: transaction.id,
@@ -93,23 +115,23 @@ export class TransferService{
             provider: provider.name
         })
 
-        //Step 4: Call the bank
+        // Step 3: Call the bank (Outside the DB Transaction)
         try{
             const result = await provider.initiateTransfer({
-                fromAccount: wallet.id,
-                toAccount: dto.recipientAccount,
-                toBankCode: dto.bankCode,
-                amount: dto.amount,
-                currency: dto.currency,
-                narration: dto.narration || ''
-            })
-
-        // Step 5: Update Transaction Status
+                fromAccount: transaction.senderWalletId,
+                toAccount: transaction.recipientAccountNumber,
+                toBankCode: transaction.bankCode,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                narration: transaction.narration || ''
+            }as any)
+        
             await this.transferRepo.updateStatus(
                 transaction.id,
                 result.status,
                 result.providerReference
             )
+
             logger.info('Transfer status updated', {
                 userId,
                 transactionId: transaction.id,
@@ -118,30 +140,25 @@ export class TransferService{
                 provider: provider.name
             })
             return {...transaction, status: result.status}
-
-        }catch(error){
-            // Bank call failed entirely - mark as failed
-            // The record still exists so there is always a paper trail
-            logger.error('Transfer failed - provider did not respond', {
+        }
+        catch(error){
+            logger.error('Transfer failed - provider did not respond',{
                 userId,
                 transactionId: transaction.id,
-                provider: provider.name,
                 amount: dto.amount,
                 currency: dto.currency
             })
-
-            // The wallet has already been debited, however since the bank call failed, 
-            // we refund the user by incrementing their wallet balance back to the original amount.
-
+            
+            // Compensating credit - refund wallet
             try{
                 await this.walletRepo.increment(
-                    {id: wallet.id},
+                    {id: transaction.senderWalletId},
                     'balance',
                     dto.amount
                 )
                 logger.info('Compensating credit applied - wallet refunded', {
                     userId,
-                    walletId: wallet.id,
+                    walletId: transaction.senderWalletId,
                     amount: dto.amount,
                     currency: dto.currency,
                     transactionId: transaction.id
