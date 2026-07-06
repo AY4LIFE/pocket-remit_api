@@ -45,6 +45,21 @@ export class LocalBankProvider extends BaseProvider{
     return {accountName: `Account Holder ${accountNumber.slice(-4)}`}
   }
 
+  async getTransferStatus(providerReference: string): Promise<TransferResult>{
+    await sleep(200) // Simulate network latency
+
+    // In a real bank, you'd call their API with the reference
+    // and get back the current status.
+    // Here we simulate it — LocalBank transfers resolve quickly
+    // so we return success for any existing reference.
+
+    return {
+        success: true,
+        providerReference: providerReference,
+        status: 'success',
+        message: 'Transfer completed successfully'
+    }
+  }
     // ------------------------------------
   // INITIATETRANSFER
   // Simulates sending money through LocalBank.
