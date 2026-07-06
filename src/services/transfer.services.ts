@@ -129,6 +129,37 @@ export class TransferService{
                 amount: dto.amount,
                 currency: dto.currency
             })
+
+            // The wallet has already been debited, however since the bank call failed, 
+            // we refund the user by incrementing their wallet balance back to the original amount.
+
+            try{
+                await this.walletRepo.increment(
+                    {id: wallet.id},
+                    'balance',
+                    dto.amount
+                )
+                logger.info('Compensating credit applied - wallet refunded', {
+                    userId,
+                    walletId: wallet.id,
+                    amount: dto.amount,
+                    currency: dto.currency,
+                    transactionId: transaction.id
+                })
+            }catch(refundError){
+                // CRITICAL — refund failed
+                // The user was debited but could not be refunded.
+                // This needs immediate human attention.
+                // In production this would trigger an alert
+                // to the on-call engineer.
+                logger.error('CRITICAL: Compensating credit failed - manual intervention required', {
+                    userId,
+                    walletId: wallet.id,
+                    amount: dto.amount,
+                    currency: dto.currency,
+                    transactionId: transaction.id
+            })
+            }
             await this.transferRepo.updateStatus(
                 transaction.id,
                 'failed',
