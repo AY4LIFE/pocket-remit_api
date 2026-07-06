@@ -235,20 +235,21 @@ export class TransferService{
         }
 
         const provider = getProvider(transaction.currency)
-        const result = await provider.initiateTransfer({
-            fromAccount: transaction.senderWalletId,
-            toAccount: transaction.recipientAccountNumber,
-            toBankCode: transaction.bankCode,
-            amount: transaction.amount,
-            currency: transaction.currency,
-            narration: transaction.narration || ''
-        }as any)
-    
-    await this.transferRepo.updateStatus(
+        const result = await provider.getTransferStatus(transaction.providerReference)
+
+        await this.transferRepo.updateStatus(
         transaction.id,
         result.status,
         result.providerReference
     )
+
+    logger.info('Transfer status refreshed', {
+        userId,
+        transactionId: transaction.id,
+        providerReference: result.providerReference,
+        status: result.status,
+        provider: provider.name
+    })
     return {...transaction, status: result.status}
     }
 }
