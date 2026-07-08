@@ -86,6 +86,7 @@ export class TransferService{
                 senderWalletId: wallet.id,
                 amount: dto.amount,
                 currency: dto.currency,
+                recipientName: accountName,
                 recipientAccountNumber: dto.recipientAccount,
                 bankCode: dto.bankCode,
                 narration: dto.narration,
