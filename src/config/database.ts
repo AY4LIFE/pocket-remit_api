@@ -22,4 +22,17 @@ export const AppDataSource = new DataSource({
   // ------------------------------------
   entities: [User, Wallet, Transaction],
   logging: false,
+  // ------------------------------------
+  // MIGRATIONS
+  // TypeORM will look for compiled migration files here.
+  // These files describe exactly what changes to make to the database
+  // ------------------------------------
+  migrations: ["dist/migrations/*.js"],
+  // ------------------------------------
+  // MIGRATIONS TABLE NAME
+  // TypeORM creates a special table in your DB to track
+  // which migrations have already run - so it never run the
+  // same migration twice.
+  // ------------------------------------
+  migrationsTableName: "migrations",
 });
