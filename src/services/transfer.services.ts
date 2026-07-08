@@ -171,7 +171,7 @@ export class TransferService{
                 // to the on-call engineer.
                 logger.error('CRITICAL: Compensating credit failed - manual intervention required', {
                     userId,
-                    walletId: wallet.id,
+                    walletId: transaction.senderWalletId,
                     amount: dto.amount,
                     currency: dto.currency,
                     transactionId: transaction.id
