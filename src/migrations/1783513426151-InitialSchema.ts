@@ -8,6 +8,14 @@ export class InitialSchema1783513426151 implements MigrationInterface {
         // ENUMS
         // Create custom types first before tables that use them
         // ------------------------------------
+
+        // ENABLE UUID EXTENSION
+        // uuid_generate_v4() requires this extension to exist.
+        // IF NOT EXISTS means it won't fail if already enabled.
+        // This must run BEFORE any table that uses uuid as a primary key.
+
+        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+        
         await queryRunner.query(`
             CREATE TYPE "public"."user_role_enum"
             AS ENUM('customer', 'admin')
