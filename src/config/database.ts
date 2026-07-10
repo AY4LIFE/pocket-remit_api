@@ -27,7 +27,7 @@ export const AppDataSource = new DataSource({
   // TypeORM will look for compiled migration files here.
   // These files describe exactly what changes to make to the database
   // ------------------------------------
-  migrations: ["dist/migrations/*.js"],
+  migrations: ["src/migrations/*.ts"],
   // ------------------------------------
   // MIGRATIONS TABLE NAME
   // TypeORM creates a special table in your DB to track
