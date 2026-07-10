@@ -33,7 +33,7 @@ const logger = devLogger()
 dotenv.config(); // loads your .env file
 
 const app = express();
-
+app.set("trust proxy", 1); // trust first proxy (needed for rate limiting behind a reverse proxy like Nginx)
 
 // Global Rate Limiter
 // Applies to all routes - a basic safety net
