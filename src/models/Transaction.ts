@@ -57,7 +57,7 @@ export class Transaction{
   bankCode!: string
 
   @Column({nullable: true})
-  narration!: true
+  narration?: string
 
   // ------------------------------------
   // PROVIDER FIELDS
