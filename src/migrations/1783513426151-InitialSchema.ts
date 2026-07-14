@@ -72,7 +72,7 @@ export class InitialSchema1783513426151 implements MigrationInterface {
                 "recipientName" character varying NOT NULL,
                 "recipientAccountNumber" character varying NOT NULL,
                 "bankCode" character varying NOT NULL,
-                "narration" boolean,
+                "narration" character varying NOT NULL,
                 "providerReference" character varying,
                 "status" "public"."transaction_status_enum" NOT NULL DEFAULT 'pending',
                 "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
