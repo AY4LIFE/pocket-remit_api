@@ -100,6 +100,7 @@ export class TransferService{
                 recipientAccountNumber: dto.recipientAccount,
                 bankCode: dto.bankCode,
                 narration: dto.narration,
+                clientReference: dto.clientReference,
                 status: 'pending'
             } as any)
 
