@@ -6,7 +6,6 @@ export class AddClientReferenceToTransaction1784534408914 implements MigrationIn
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "transaction" ADD "clientReference" character varying NOT NULL`);
         await queryRunner.query(`ALTER TABLE "transaction" ADD CONSTRAINT "UQ_3b35593cae1d7f3c40860659844" UNIQUE ("clientReference")`);
-        await queryRunner.query(`ALTER TABLE "transaction" DROP COLUMN "narration"`);
         await queryRunner.query(`ALTER TABLE "transaction" ADD "narration" character varying`);
     }
 
