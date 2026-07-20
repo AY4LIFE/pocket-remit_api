@@ -71,4 +71,23 @@ export class TransferRepository{
     ): Promise<void>{
         await this.repo.update(id, {status, providerReference})
     }
-}
+
+    async findByClientReference(clientReference: string): Promise<Transaction | null>{
+        return await this.repo.findOne({
+            where: {clientReference },
+            relations: ['sender'],
+            select: {
+              sender: {
+                  id: true,
+                  email: true,
+                  full_name: true,
+                  role: true,
+                  created_at: true
+              }
+            }
+          })
+        }
+                
+
+      }
+    
