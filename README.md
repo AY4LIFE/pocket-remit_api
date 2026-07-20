@@ -128,6 +128,7 @@ src/
 ├── models/          # TypeORM entities
 ├── dto/             # Input shapes and validation rules
 ├── middlewares/     # Auth, validation, request logging
+├── migrations/      # Version-controlled database schema changes
 ├── utils/           # Logger, error classes, response helpers
 └── routes/          # Express route definitions
  
