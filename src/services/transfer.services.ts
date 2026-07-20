@@ -128,7 +128,7 @@ export class TransferService{
         })
 
         // Step 3: Call the bank (Outside the DB Transaction)
-        let result
+        let result: any
         try{
             result = await provider.initiateTransfer({
                 fromAccount: transaction.senderWalletId,
@@ -140,13 +140,14 @@ export class TransferService{
             })
 
         } catch (error){
-            // Bank call fails entirely - safe to refund
+            // A provider timeout does not mean the transfer failed - it may have gone through
             logger.error('Transfer failed - provider did not respond', {
                 userId,
                 transactionId: transaction.id,
                 provider: provider.name,
                 amount: dto.amount,
-                currency: dto.currency
+                currency: dto.currency,
+                error: error instanceof Error ? error.message : String(error)
             })
 
             await this.transferRepo.updateStatus(transaction.id, 'failed', 'N/A')
@@ -177,6 +178,24 @@ export class TransferService{
             throw new Error('Transfer failed: Bank Provider did not respond')
         }
 
+        if (result.status === 'pending'){
+            logger.info('Transfer is pending - provider did not respond', {
+                userId,
+                transactionId: transaction.id,
+                provider: provider.name,
+                amount: dto.amount,
+                currency: dto.currency
+            })
+        } else if (result.status === 'success'){
+            logger.info('Transfer successful', {
+                userId,
+                transactionId: transaction.id,
+                provider: provider.name,
+                amount: dto.amount,
+                currency: dto.currency
+            })
+        }
+
         // Bank returned status: 'failed' - money never moved - refund wallet
         if (result.status === 'failed'){
             logger.warn('Transfer rejected by provider - refunding wallet', {
@@ -186,31 +205,31 @@ export class TransferService{
                 amount: dto.amount,
                 currency: dto.currency
             })
-        await this.transferRepo.updateStatus(transaction.id, 'failed', result.providerReference)
+            await this.transferRepo.updateStatus(transaction.id, 'failed', result.providerReference)
 
-        try{
-            await this.walletRepo.increment(
-                {id: transaction.senderWalletId},
-                'balance',
-                dto.amount
-            )
-            logger.info('Compensating credit applied - wallet refunded after provider rejection', {
-                userId,
-                walletId: transaction.senderWalletId,
-                amount: dto.amount,
-                transactionId: transaction.id
-            })
-        }catch(refundError){
-            // CRITICAL - refund failed
-            logger.error('CRITICAL: Compensating credit failed after provider rejection - manual intervention required', {
-                userId,
-                walletId: transaction.senderWalletId,
-                amount: dto.amount,
-                transactionId: transaction.id
-            })
-        }
+            try{
+                await this.walletRepo.increment(
+                    {id: transaction.senderWalletId},
+                    'balance',
+                    dto.amount
+                )
+                logger.info('Compensating credit applied - wallet refunded after provider rejection', {
+                    userId,
+                    walletId: transaction.senderWalletId,
+                    amount: dto.amount,
+                    transactionId: transaction.id
+                })
+            }catch(refundError){
+                // CRITICAL - refund failed
+                logger.error('CRITICAL: Compensating credit failed after provider rejection - manual intervention required', {
+                    userId,
+                    walletId: transaction.senderWalletId,
+                    amount: dto.amount,
+                    transactionId: transaction.id
+                })
+            }
 
-        return {...transaction, status: 'failed'}
+            return {...transaction, status: 'failed'}
         }
         
         try{
