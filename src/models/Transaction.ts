@@ -77,4 +77,7 @@ export class Transaction{
 
   @CreateDateColumn()
   createdAt!: Date
+
+  @Column({unique: true})
+  clientReference!: string // This makes the DB enforce no duplicate transfers
 }
