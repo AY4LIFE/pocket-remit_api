@@ -128,40 +128,29 @@ export class TransferService{
         })
 
         // Step 3: Call the bank (Outside the DB Transaction)
+        let result
         try{
-            const result = await provider.initiateTransfer({
+            result = await provider.initiateTransfer({
                 fromAccount: transaction.senderWalletId,
-                toAccount: transaction.recipientAccountNumber,
-                toBankCode: transaction.bankCode,
-                amount: transaction.amount,
-                currency: transaction.currency,
-                narration: transaction.narration || ''
-            }as any)
-        
-            await this.transferRepo.updateStatus(
-                transaction.id,
-                result.status,
-                result.providerReference
-            )
-
-            logger.info('Transfer status updated', {
-                userId,
-                transactionId: transaction.id,
-                status: result.status,
-                providerReference: result.providerReference,
-                provider: provider.name
+                toAccount: dto.recipientAccount,
+                toBankCode: dto.bankCode,
+                amount: dto.amount,
+                currency: dto.currency,
+                narration: dto.narration || ''
             })
-            return {...transaction, status: result.status}
-        }
-        catch(error){
-            logger.error('Transfer failed - provider did not respond',{
+
+        } catch (error){
+            // Bank call fails entirely - safe to refund
+            logger.error('Transfer failed - provider did not respond', {
                 userId,
                 transactionId: transaction.id,
+                provider: provider.name,
                 amount: dto.amount,
                 currency: dto.currency
             })
-            
-            // Compensating credit - refund wallet
+
+            await this.transferRepo.updateStatus(transaction.id, 'failed', 'N/A')
+
             try{
                 await this.walletRepo.increment(
                     {id: transaction.senderWalletId},
@@ -176,26 +165,78 @@ export class TransferService{
                     transactionId: transaction.id
                 })
             }catch(refundError){
-                // CRITICAL — refund failed
-                // The user was debited but could not be refunded.
-                // This needs immediate human attention.
-                // In production this would trigger an alert
-                // to the on-call engineer.
+                // CRITICAL - refund failed
                 logger.error('CRITICAL: Compensating credit failed - manual intervention required', {
                     userId,
                     walletId: transaction.senderWalletId,
                     amount: dto.amount,
                     currency: dto.currency,
                     transactionId: transaction.id
-            })
+                })
             }
-            await this.transferRepo.updateStatus(
-                transaction.id,
-                'failed',
-                'N/A'
-            )
             throw new Error('Transfer failed: Bank Provider did not respond')
         }
+
+        // Bank returned status: 'failed' - money never moved - refund wallet
+        if (result.status === 'failed'){
+            logger.warn('Transfer rejected by provider - refunding wallet', {
+                userId,
+                transactionId: transaction.id,
+                provider: provider.name,
+                amount: dto.amount,
+                currency: dto.currency
+            })
+        await this.transferRepo.updateStatus(transaction.id, 'failed', result.providerReference)
+
+        try{
+            await this.walletRepo.increment(
+                {id: transaction.senderWalletId},
+                'balance',
+                dto.amount
+            )
+            logger.info('Compensating credit applied - wallet refunded after provider rejection', {
+                userId,
+                walletId: transaction.senderWalletId,
+                amount: dto.amount,
+                transactionId: transaction.id
+            })
+        }catch(refundError){
+            // CRITICAL - refund failed
+            logger.error('CRITICAL: Compensating credit failed after provider rejection - manual intervention required', {
+                userId,
+                walletId: transaction.senderWalletId,
+                amount: dto.amount,
+                transactionId: transaction.id
+            })
+        }
+
+        return {...transaction, status: 'failed'}
+        }
+        
+        try{
+            await this.transferRepo.updateStatus(
+                transaction.id,
+                result.status,
+                result.providerReference
+             )
+            logger.info('Transfer status updated,', {
+                userId,
+                transactionId: transaction.id,
+                providerReference: result.providerReference,
+                status: result.status,
+                provider: provider.name
+            })
+        } catch(updateError){
+            // Money was sent - DO NOT REFUND, just log for manual fix
+            logger.error('CRITICAL: Failed to update transfer status - manual intervention required', {
+                userId,
+                transactionId: transaction.id,
+                providerReference: result.providerReference,
+                status: result.status,
+                provider: provider.name
+            })
+        }
+        return {...transaction, status: result.status}
     }
 
     // GET TRANSACTIONS
