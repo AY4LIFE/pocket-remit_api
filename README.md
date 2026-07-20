@@ -34,6 +34,9 @@ cd pocket-remit_api
  
 # Install dependencies
 npm install
+
+# Set up all tables on a fresh databases
+npm run migration:run
  
 # Copy the environment variables template
 cp .env.example .env
