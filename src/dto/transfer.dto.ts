@@ -36,4 +36,9 @@ export class InitiateTransferDto{
     @IsString()
     @Transform(({ value }: { value: any }) => value ?? undefined)
     narration?: string
+
+    @IsString()
+    @IsNotEmpty()
+    clientReference!: string // A unique reference for the transfer, provided by the client
+
 }
