@@ -25,7 +25,7 @@ export class TransferService{
         dto: InitiateTransferDto
     ): Promise<Transaction>{
 
-        const existingTransaction = await this.transferRepo.findByClientReference(dto.clientReference)
+        const existingTransaction = await this.transferRepo.findByClientReference(dto.clientReference, userId)
         if(existingTransaction){
             logger.info('Duplicate transfer attempt detected', {
                 userId,
