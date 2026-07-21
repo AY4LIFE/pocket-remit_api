@@ -141,41 +141,30 @@ export class TransferService{
 
         } catch (error){
             // A provider timeout does not mean the transfer failed - it may have gone through
-            logger.error('Transfer failed - provider did not respond', {
+            // We will keep the transaction as 'pending'
+            // and let the user check status
+            // Only refund when bank confirms failure
+
+            logger.error('Provider timeout or network error - transfer status unknown',{
                 userId,
                 transactionId: transaction.id,
                 provider: provider.name,
                 amount: dto.amount,
                 currency: dto.currency,
-                error: error instanceof Error ? error.message : String(error)
+                error: error instanceof Error? error.message: String(error)
             })
 
-            await this.transferRepo.updateStatus(transaction.id, 'failed', 'N/A')
-
-            try{
-                await this.walletRepo.increment(
-                    {id: transaction.senderWalletId},
-                    'balance',
-                    dto.amount
-                )
-                logger.info('Compensating credit applied - wallet refunded', {
-                    userId,
-                    walletId: transaction.senderWalletId,
-                    amount: dto.amount,
-                    currency: dto.currency,
-                    transactionId: transaction.id
-                })
-            }catch(refundError){
-                // CRITICAL - refund failed
-                logger.error('CRITICAL: Compensating credit failed - manual intervention required', {
-                    userId,
-                    walletId: transaction.senderWalletId,
-                    amount: dto.amount,
-                    currency: dto.currency,
-                    transactionId: transaction.id
-                })
-            }
-            throw new Error('Transfer failed: Bank Provider did not respond')
+            // Keep as 'pending' and not 'failed'
+            await this.transferRepo.updateStatus(
+                transaction.id,
+                'pending',
+                'UNKNOWN'
+            )
+            // Tell the user to check status later
+            throw new Error(
+                'Transfer status unknown - provider did not respond in time. ' +
+                'Please check your transaction status before retrying'
+            )
         }
 
         if (result.status === 'pending'){
@@ -309,19 +298,56 @@ export class TransferService{
         const provider = getProvider(transaction.currency)
         const result = await provider.getTransferStatus(transaction.providerReference)
 
-        await this.transferRepo.updateStatus(
-        transaction.id,
-        result.status,
-        result.providerReference
-    )
+        // REFUND ONLY WHEN THE BANK CONFIRMS FAILURE
+        if (result.status === 'failed'){
+            logger.warn('Transfer confirmed failed by provider - refunding wallet', {
+                userId,
+                transactionId: transaction.id,
+                providerReference: transaction.providerReference,
+            })
 
-    logger.info('Transfer status refreshed', {
-        userId,
-        transactionId: transaction.id,
-        providerReference: result.providerReference,
-        status: result.status,
-        provider: provider.name
-    })
-    return {...transaction, status: result.status}
+            await this.transferRepo.updateStatus(
+                transaction.id,
+                'failed',
+                result.providerReference
+            )
+
+            try{
+                await this.walletRepo.increment(
+                    {id: transaction.senderWalletId},
+                    'balance',
+                    transaction.amount
+                )
+                logger.info('Compensating credit applied - wallet refunded after confirmed failure', {
+                    userId,
+                    walletId: transaction.senderWalletId,
+                    amount: transaction.amount,
+                    transactionId: transaction.id
+                })
+            }catch(refundError){
+                logger.error('CRITICAL: Compensating credit failed - manual intervention required', {
+                    userId,
+                    walletId: transaction.senderWalletId,
+                    amount: transaction.amount,
+                    transactionId: transaction.id
+                })
+            }
+            return {...transaction, status: 'failed'}
+        }
+
+        await this.transferRepo.updateStatus(
+            transaction.id,
+            result.status,
+            result.providerReference
+        )
+
+        logger.info('Transfer status refreshed', {
+            userId,
+            transactionId: transaction.id,
+            providerReference: result.providerReference,
+            status: result.status,
+            provider: provider.name
+        })
+        return {...transaction, status: result.status}
     }
 }
