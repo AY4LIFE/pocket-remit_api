@@ -3,7 +3,8 @@ import {
     PrimaryGeneratedColumn,
     Column,
     ManyToOne,
-    CreateDateColumn
+    CreateDateColumn,
+    Index
 } from 'typeorm'
 import {User} from './User.js'
 
@@ -78,6 +79,7 @@ export class Transaction{
   @CreateDateColumn()
   createdAt!: Date
 
-  @Column({unique: true})
+  @Index(['clientReference', 'sender'], {unique: true}) // Unique per sender, 
+  @Column()
   clientReference!: string // This makes the DB enforce no duplicate transfers
 }
