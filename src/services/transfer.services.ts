@@ -158,7 +158,7 @@ export class TransferService{
             await this.transferRepo.updateStatus(
                 transaction.id,
                 'pending',
-                'UNKNOWN'
+                transaction.clientReference // Replace 'UNKNOWN' with the client reference sent to the bank
             )
             // Tell the user to check status later
             throw new Error(
