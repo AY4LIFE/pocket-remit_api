@@ -300,37 +300,65 @@ export class TransferService{
 
         // REFUND ONLY WHEN THE BANK CONFIRMS FAILURE
         if (result.status === 'failed'){
-            logger.warn('Transfer confirmed failed by provider - refunding wallet', {
-                userId,
-                transactionId: transaction.id,
-                providerReference: transaction.providerReference,
-            })
 
-            await this.transferRepo.updateStatus(
-                transaction.id,
-                'failed',
-                result.providerReference
-            )
+            // Two simultaneous status checks could both see 'pending' and trigger a refund
+            // Wrap the status update and wallet refund in a DB transaction
+            // with a pessimistic lock
+
+            const queryRunner = AppDataSource.createQueryRunner()
+            await queryRunner.connect()
+            await queryRunner.startTransaction()
 
             try{
-                await this.walletRepo.increment(
+                // Lock the transaction so only one request process at a time
+                const lockedTransaction = await queryRunner.manager.findOne(Transaction,
+                    {
+                        where: {id: transaction.id},
+                        lock: {mode: 'pessimistic_write'}
+                    })
+
+                if (!lockedTransaction || lockedTransaction.status !== 'pending'){
+                    await queryRunner.rollbackTransaction()
+                    logger.info('Transaction already processed by another request - skipping refund', {
+                        userId,
+                        transactionId: transaction.id
+                    })
+                    return {...transaction, status: lockedTransaction?.status ?? transaction.status} 
+                }
+
+                // Update status to failed
+                await queryRunner.manager.update(Transaction,
+                    {id: transaction.id},
+                    {
+                        status: 'failed',
+                        providerReference: result.providerReference
+                    }
+                )
+
+                await queryRunner.manager.increment(
+                    Wallet,
                     {id: transaction.senderWalletId},
                     'balance',
                     transaction.amount
                 )
-                logger.info('Compensating credit applied - wallet refunded after confirmed failure', {
+                await queryRunner.commitTransaction()
+                logger.warn('Transaction confirmed - wallet refunded', {
                     userId,
+                    transactionId: transaction.id,
                     walletId: transaction.senderWalletId,
-                    amount: transaction.amount,
-                    transactionId: transaction.id
+                    amount: transaction.amount
                 })
+                
             }catch(refundError){
+                await queryRunner.rollbackTransaction()
                 logger.error('CRITICAL: Compensating credit failed - manual intervention required', {
                     userId,
-                    walletId: transaction.senderWalletId,
                     amount: transaction.amount,
                     transactionId: transaction.id
                 })
+                throw refundError
+            }finally{
+                await queryRunner.release()
             }
             return {...transaction, status: 'failed'}
         }
