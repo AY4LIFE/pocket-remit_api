@@ -14,6 +14,7 @@ import {User} from './User.js'
 // Every completed (or attempted) transfer gets one row here.
 // ------------------------------------
 @Entity()
+@Index(['clientReference', 'sender'], {unique: true}) // Composite index to ensure no duplicate transfers for the same sender
 export class Transaction{
     @PrimaryGeneratedColumn('uuid')
     id!: string
@@ -79,7 +80,6 @@ export class Transaction{
   @CreateDateColumn()
   createdAt!: Date
 
-  @Index(['clientReference', 'sender'], {unique: true}) // Unique per sender, 
   @Column()
   clientReference!: string // This makes the DB enforce no duplicate transfers
 }
