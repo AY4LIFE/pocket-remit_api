@@ -194,31 +194,64 @@ export class TransferService{
                 amount: dto.amount,
                 currency: dto.currency
             })
-            await this.transferRepo.updateStatus(transaction.id, 'failed', result.providerReference)
+            
+            const refundRunner = AppDataSource.createQueryRunner()
+            await refundRunner.connect()
+            await refundRunner.startTransaction()
 
             try{
-                await this.walletRepo.increment(
+                // Lock transaction to avoid race conditions
+                const lockedTransaction = await refundRunner.manager.findOne(Transaction, {
+                    where: {id: transaction.id},
+                    lock: {mode: 'pessimistic_write'}
+                })
+
+                if (!lockedTransaction || lockedTransaction.status !== 'pending'){
+                    await refundRunner.rollbackTransaction()
+                    logger.info('Transaction already processed by another request - skipping refund', {
+                        userId,
+                        transactionId: transaction.id
+                    })
+                    return {...transaction, status: lockedTransaction?.status ?? transaction.status} 
+                }
+
+                await refundRunner.manager.update(
+                    Transaction,
+                    {id: transaction.id},
+                    {
+                        status: 'failed',
+                        providerReference: result.providerReference
+                    }
+                )
+                await refundRunner.manager.increment(
+                    Wallet,
                     {id: transaction.senderWalletId},
                     'balance',
                     dto.amount
                 )
-                logger.info('Compensating credit applied - wallet refunded after provider rejection', {
+                await refundRunner.commitTransaction()
+
+                logger.info('Compensating credit applied - wallet refunded after provider rejection',{
                     userId,
                     walletId: transaction.senderWalletId,
                     amount: dto.amount,
-                    transactionId: transaction.id
+                    transactionId: transaction.id,
                 })
+                
             }catch(refundError){
-                // CRITICAL - refund failed
+                await refundRunner.rollbackTransaction()
                 logger.error('CRITICAL: Compensating credit failed after provider rejection - manual intervention required', {
                     userId,
                     walletId: transaction.senderWalletId,
                     amount: dto.amount,
-                    transactionId: transaction.id
+                    transactionId: transaction.id,
+                    error: refundError instanceof Error? refundError.message: String(refundError)
                 })
+                throw refundError
+            }finally{
+                await refundRunner.release()
             }
-
-            return {...transaction, status: 'failed'}
+            return {...transaction, status: 'failed', providerReference: result.providerReference}
         }
         
         try{
