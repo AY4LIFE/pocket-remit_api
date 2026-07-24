@@ -28,6 +28,8 @@ export class LocalBankProvider extends BaseProvider{
     // Satisfies the supported Currencies requirements from BaseProvider
     readonly supportedCurrencies = ['NGN']
 
+    private resultsByIdempotencyReference = new Map<string, TransferResult>()
+
 // ------------------------------------
   // LOOKUPACCOUNT
   // In a real system, this would call the bank's API to verify the account.
@@ -74,7 +76,7 @@ export class LocalBankProvider extends BaseProvider{
 
     // If willFail is true → transfer failed
     // If willFail is false → transfer succeeded
-    return {
+    const result: TransferResult = {
         success: !willFail,
         providerReference: `LB-${Date.now()}`, // Date.now() gives current timesatmp
         status: willFail? 'failed': 'success',
@@ -82,5 +84,15 @@ export class LocalBankProvider extends BaseProvider{
         ? 'Transfer failed due to a provider error' 
         : 'Transfer completed successfully'
     }
+
+    this.resultsByIdempotencyReference.set(req.idempotencyKey, result)
+      return result
+}
+
+async getStatusByIdempotencyKey(
+  idempotencyReference: string): 
+  Promise<TransferResult | null>{
+    await sleep(200) // Simulate network latency
+    return this.resultsByIdempotencyReference.get(idempotencyReference) ?? null
   }
 }
