@@ -9,6 +9,7 @@ export interface TransferRequest{
     amount: number                              // How much to send
     currency: string                            // eg 'NGN', 'USD', 'GHS'
     narration: string                           // A note/description for the transfer
+    idempotencyKey: string                      // A unique key (Transaction.clientReference) to prevent duplicate transfers  
 }
 
 // Transfer Result
@@ -48,4 +49,5 @@ export abstract class BaseProvider{
     // We don't care about the how - each bank does it differently
     abstract initiateTransfer(req: TransferRequest): Promise<TransferResult>
     abstract getTransferStatus(providerReference: string): Promise<TransferResult>
+    abstract getStatusByIdempotencyKey(idempotencyReference: string): Promise<TransferResult | null>
 }
