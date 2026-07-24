@@ -161,7 +161,8 @@ export class TransferService{
                 toBankCode: dto.bankCode,
                 amount: dto.amount,
                 currency: dto.currency,
-                narration: dto.narration || ''
+                narration: dto.narration || '',
+                idempotencyKey: transaction.clientReference
             })
 
         } catch (error){
@@ -178,13 +179,7 @@ export class TransferService{
                 currency: dto.currency,
                 error: error instanceof Error? error.message: String(error)
             })
-
-            // Keep as 'pending' and not 'failed'
-            await this.transferRepo.updateStatus(
-                transaction.id,
-                'pending',
-                transaction.clientReference // Replace 'UNKNOWN' with the client reference sent to the bank
-            )
+            
             // Tell the user to check status later
             throw new Error(
                 'Transfer status unknown - provider did not respond in time. ' +
