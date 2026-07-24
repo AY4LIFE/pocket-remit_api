@@ -5,11 +5,20 @@ import {InitiateTransferDto} from '../dto/transfer.dto.js'
 import {Transaction} from '../models/Transaction.js'
 import {getProvider} from '../providers/provider.router.js'
 import devLogger from '../utils/logger.js'
+import { QueryFailedError } from 'typeorm'
 
 const logger = devLogger()
 export class TransferService{
     private transferRepo = new TransferRepository()
     private walletRepo = AppDataSource.getRepository(Wallet)
+
+
+    private isDuplicateClientReferenceError(error: unknown): boolean{
+        if (!(error instanceof QueryFailedError)) return false
+        const driverError = (error as any).driverError
+        return driverError?.code === '23505'
+        && driverError?.constraint === 'UQ_clientReference_sender'
+    }
 
     async getWallet(userId: string, dto: InitiateTransferDto): Promise<Wallet | null> {
         return await this.walletRepo.findOne({
@@ -111,6 +120,22 @@ export class TransferService{
             // Rollback
             // If anything inside fails, undo everything automatically
             await queryRunner.rollbackTransaction()
+            
+            if (this.isDuplicateClientReferenceError(error)){
+                const existingTransaction = await this.transferRepo.findByClientReference(
+                    dto.clientReference,
+                    userId
+                )
+                if (existingTransaction){
+                    logger.info('Duplicate transfer attempt detected after race on insert', {
+                        userId,
+                        clientReference: dto.clientReference,
+                        transactionId: existingTransaction.id
+                    })
+                    return existingTransaction
+                    }
+                }
+            
             throw error
         }
         finally{
