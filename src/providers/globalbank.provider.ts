@@ -15,6 +15,7 @@ const sleep = (ms: number): Promise<void> => {
 export class GlobalBankProvider extends BaseProvider{
     readonly name = 'GlobalBank'
     readonly supportedCurrencies = ['USD', 'GHS', 'EUR']
+    private resultsByIdempotencyReference = new Map<string, TransferResult>()
 
     // ------------------------------------
   // LOOKUPACCOUNT
@@ -56,12 +57,21 @@ export class GlobalBankProvider extends BaseProvider{
   async initiateTransfer(req: TransferRequest): Promise<TransferResult>{
     await sleep(800)
 
-    return {
+    const result: TransferResult = {
         success: true, // We successfully submitted the transfer
         providerReference: `GB-${Date.now()}`,
         status: 'pending', // Transfer has not been completed yet
         message: 'Transfer submitted for pending'
     }
+    this.resultsByIdempotencyReference.set(req.idempotencyKey, result)
+    return result
+  }
+
+  async getStatusByIdempotencyKey(
+    idempotencyReference: string
+  ): Promise<TransferResult | null>{
+    await sleep(500)
+    return this.resultsByIdempotencyReference.get(idempotencyReference) ?? null
   }
 }
 
