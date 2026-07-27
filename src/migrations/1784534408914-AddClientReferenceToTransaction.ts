@@ -1,3 +1,4 @@
+import { text } from "express";
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddClientReferenceToTransaction1784534408914 implements MigrationInterface {
@@ -5,9 +6,27 @@ export class AddClientReferenceToTransaction1784534408914 implements MigrationIn
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         
+        // Add the column as nullable first
         await queryRunner.query(`
             ALTER TABLE "transaction"
-            ADD "clientReference" character varying NOT NULL
+            ADD "clientReference" character varying
+        `);
+
+        // Backfill existing rows
+        // Pre-existing transactions never had a client-supplied reference
+        // so we generate one from the row's own id (which is already
+        // a unique UUID primary key)
+
+        await queryRunner.query(`
+            UPDATE "transaction"
+            SET "clientReference" = "id"::text
+            WHERE "clientReference" IS null
+            `)
+        
+        // NOW ENFORCE NOT NULL
+        await queryRunner.query(`
+            ALTER TABLE "transaction"
+            ALTER COLUMN "clientReference" SET NOT NULL
         `);
 
         // ------------------------------------
@@ -28,11 +47,12 @@ export class AddClientReferenceToTransaction1784534408914 implements MigrationIn
         // ALTER COLUMN changes the type to varchar
         // without dropping or losing existing data
         // ------------------------------------
+
         await queryRunner.query(`
             ALTER TABLE "transaction"
             ALTER COLUMN "narration" TYPE character varying
             USING narration::text
-        `);
+            `)
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
