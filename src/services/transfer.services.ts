@@ -349,7 +349,25 @@ export class TransferService{
         }
 
         const provider = getProvider(transaction.currency)
-        const result = await provider.getTransferStatus(transaction.providerReference)
+
+        // Normally we ask the bank about its OWN reference. But if the initial
+        // initiateTransfer() call timed out, we never received one - all we
+        // have is the clientReference we sent as an idempotency key.
+        // Ask the bank about that instead.
+        const result = transaction.providerReference
+        ? await provider.getTransferStatus(transaction.providerReference)
+        : await provider.getStatusByIdempotencyKey(transaction.clientReference)
+
+        // The bank has no record of this reference yet (still hasn't reached
+        // them, or genuilely lost) - nothing to update, stays 'pending'
+        if (!result){
+            logger.info('Bank has no record of this transfer yet - still planning',{
+                userId,
+                transactionId: transaction.id,
+                clientReference: transaction.clientReference
+            })
+            return transaction
+        }
 
         // REFUND ONLY WHEN THE BANK CONFIRMS FAILURE
         if (result.status === 'failed'){
