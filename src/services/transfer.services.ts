@@ -65,6 +65,7 @@ export class TransferService{
 
         const existingTransaction = await this.transferRepo.findByClientReference(dto.clientReference, userId)
         if(existingTransaction){
+            this.assertMatchesExistingTransaction(existingTransaction, dto)
             logger.info('Duplicate transfer attempt detected', {
                 userId,
                 clientReference: dto.clientReference,
@@ -156,6 +157,7 @@ export class TransferService{
                     userId
                 )
                 if (existingTransaction){
+                    this.assertMatchesExistingTransaction(existingTransaction, dto)
                     logger.info('Duplicate transfer attempt detected after race on insert', {
                         userId,
                         clientReference: dto.clientReference,
