@@ -20,6 +20,35 @@ export class TransferService{
         && driverError?.constraint === 'UQ_clientReference_sender'
     }
 
+    // An idempotency key (clientReference) must always map to the same
+    // request. If someone reuses a clientReference with a different
+    // amount, currency, bank or recipient because that would not be
+    // a safe retry.
+    // We must not silently return the old transaction in that case.
+    private assertMatchesExistingTransaction(
+        existingTransaction: Transaction,
+        dto: InitiateTransferDto
+    ): void{
+        const isSameRequest = 
+        Number(existingTransaction.amount) === Number(dto.amount)
+        && existingTransaction.currency === dto.currency
+        && existingTransaction.bankCode === dto.bankCode
+        && existingTransaction.recipientAccountNumber === dto.recipientAccount
+
+        if (!isSameRequest){
+            logger.warn('clientReference reused with a different transfer request', {
+                userId: existingTransaction.sender?.id,
+                clientReference: dto.clientReference,
+                existingTransactionId: existingTransaction.id
+            })
+            const connflictError = new Error(
+                'This clientReference was already used for a different transfer. ' +
+                'Use a new clientReference for a new transfer'
+            ) as Error & {status?: number}
+            connflictError.status = 409
+            throw connflictError
+        }
+    }
     async getWallet(userId: string, dto: InitiateTransferDto): Promise<Wallet | null> {
         return await this.walletRepo.findOne({
             where: {
