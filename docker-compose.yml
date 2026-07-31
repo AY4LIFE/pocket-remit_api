@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: Ayomide
+      POSTGRES_PASSWORD: Yoyois13%
+      POSTGRES_DB: my_database
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+
+
+volumes:
+  postgres-data:
+  redis-data:
